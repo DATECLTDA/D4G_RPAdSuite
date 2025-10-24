@@ -38,12 +38,13 @@ def subtract(a: int, b: int) -> int:
     return a - b
 
 if __name__ == "__main__":
-    logger.info(f" MCP server started on port {os.getenv('PORT', 8080)}")
-    # Could also use 'sse' transport, host="0.0.0.0" required for Cloud Run.
+    port = 8080  # puerto fijo
+    logger.info(f"MCP server started on port {port}")
+    
     asyncio.run(
         mcp.run_async(
-            transport="streamable-http", 
-            host="0.0.0.0", 
-            port=os.getenv("PORT", 8080),
+            transport="streamable-http",
+            host="0.0.0.0",
+            port=port,
         )
     )
