@@ -1,8 +1,19 @@
 [project]
-name = "mcp-on-cloudrun"
-version = "0.1.0"
-description = "Example of deploying a MCP server on Cloud Run"
-requires-python = ">=3.10"
+name = "mcp-server"
+version = "1.0.0"
+description = "Minimal MCP server running on Cloud Run"
+requires-python = ">=3.13"
 dependencies = [
     "fastmcp==2.6.1",
+    "pydantic==2.5.3",
+    "uvicorn",
+    "httpx",
+    "typer",
+    "rich",
+    "websockets",
+    "python-dotenv",
 ]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"

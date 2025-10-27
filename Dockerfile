@@ -1,20 +1,17 @@
-# Use the official Python lightweight image
+# Usamos Python slim para que sea liviano
 FROM python:3.13-slim
 
-# Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-
-# Install the project into /app
-COPY . /app
+# Directorio de trabajo
 WORKDIR /app
 
-# Allow statements and log messages to immediately appear in the logs
-ENV PYTHONUNBUFFERED=1
+# Copiar e instalar dependencias
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Install dependencies
-RUN uv sync
+# Copiar código
+COPY . .
 
 EXPOSE 7000
 
-# Run the FastMCP server
-CMD ["uv", "run", "server.py"]
+# Ejecutar servidor MCP
+CMD ["python", "server.py"]
