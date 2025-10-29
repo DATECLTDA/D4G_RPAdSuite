@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "datec-d4g-adn",
+  "private_key_id": "d6ad4a56bf215fc4c3de4493c070fb47aeba882e",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDaMFpmaHP95euZ\njfObLsf5P95A8lXG8SrU061skuwqVX9pP+BvM7GiRxI81YNr289WlikLxNigEAmU\nbuN2GAegDL6T+/WV+w9ScX7cIorUpdC3yisjVdDkZcWJTHbug4pgeuDVLC62OyG4\nur8goPtQ1y7sPUkzzrhDRaaUf6MvhzFO/zrIJMHQEA19uy7sqQKscf+FPxGsGn2t\nAUWtIy7NN/SkfLEP5NwV2CXW4M1UaYo0/RX/bwj1wWLj6CgLhYZGBO8YpWlGQq2b\nNC792HGyF9ElQAOzUVb2OtaTkGIMAAaGyLTKdJkP0C5iPtKJrE94FHBbHjd2nz02\nw2hB7SR9AgMBAAECggEAOFdCEK2qPgbP9p/UJt9GnhMi9gxdn/iIgdqDLsUlnKzl\nMK1g6/YiSXAmwnSz8fcZrBcsVDCpa3OYta6Ip+b+mRKRZ68pNGhXBYfvJTL6PHzw\nz3Sx/Pbc8Q1im9iV4XMwGUfBpOo6ya2tQIFgdzF6k95s7G3K6EjaBe0HXdMztUKu\nl8mees7grL2Fce4+2/U0WVb1v0ItlrQs85b9FyP5AENv+HJXSx8/N4gBe3T8igaO\nRgIco1q+5HstzZJkKqfXsdTyIWzXDLJhu9Yk+uqPS4mpAWh9rKqBVxh0YaRX4oBX\nt1ZuOQ/TR49djQC+hhF+G+f/p3rupO0kE0JJI/SZ1QKBgQDz4o44JUV0UiOe+T2O\ntOYvTIafRgwwkUEY/gvnagtS2NaDzCToxeZn/kWuuPifrzqC9QqL4jrcKBsuHC1z\nXZRnVlWY8gg6CbbuedWlX4LKttW8EbmGCV/RjrB/S+OJQolvZHKRj9cpRs4rhXaB\nPODCgCPjKggt/ZLVbg0UdM8OzwKBgQDlBwZIaYTk9723NnQVa9+vGzD13jvOh8Em\nPcbPo7nHte2nEDA2k1K5B93YOjP/IOTHX6YEAM3R1tSY8SzgMzqPDMe8zKMTtjVk\nqmEkamjM373/TpcRtndWZQwoFMp9Cr/ZSnOz/XwTYa2o0aTxH4irhQu99H4BXeIM\nf+Yby9IK8wKBgG6b8rp+FOjzk9o22fdODhOnlmrIHyErz6VhGs8Cpk4Vr/yoapjz\noFLL3JiopYHuvA/GyNi2atGMkv8vomFvMK5JVpr+MkL4QvIXaZEOJ0h+8aLROx4S\nRFXLbDrflTucZK6TlO51mTTMOxc7+YoVrS4pZZ1SY9FP7vdDaUU80Oe7AoGBALYL\nsF3MqhrKJZ3FBd6lIWbxqSg2HrnaxJfeEPKpRJnPLXlW78vhrKZw71DZas1H2zHz\nAGY8MV2zcsejJLWNYuWkFfwneRTJB4XdvFuSzXzT+BVA5enpbNBaf6A4bn+YFMjm\nWjPesEpDoSMIiSA0nZEgryWtep8hffXLkB/WEj4rAoGBAIBnxctXyRLpMHZz3GHL\nwwwf61t418j3bGLY1exc8ChYpsrCWNcxHzbxMRHDUfMPVTQO1e3TDMIWGKkqGU5g\nlOsxYY4Ns3WM/ftLiBUAmGdAA3kPqpXFgV4yjq0BbEZT9SRbiH+IbRbibQy2C2Ut\nH6hRHx6t25pn7+IVXXHobdwQ\n-----END PRIVATE KEY-----\n",
+  "client_email": "vision-api-service@datec-d4g-adn.iam.gserviceaccount.com",
+  "client_id": "107062964808143321756",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/vision-api-service%40datec-d4g-adn.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
