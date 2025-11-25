@@ -4,7 +4,8 @@ import os
 # import requests # <- Comentado
 # from datetime import datetime # <- Comentado
 from fastmcp import FastMCP
-from fastapi import Request, HTTPException, status, APIRouter
+from fastapi import Request, HTTPException, status
+# from fastapi import APIRouter # <-- REMOVIDO: Ya no usamos el router de prueba
 import json
 
 # Importar solo la función de orquestación que usaremos
@@ -25,16 +26,9 @@ AUTH_SECRET = os.getenv("APPS_SCRIPT_AUTH_SECRET", "default_secret_if_missing")
 mcp = FastMCP("MCP Server on Cloud Run")
 
 
-# Creamos un router temporal de FastAPI
-test_router = APIRouter()
-@test_router.post("/test/check")
-async def test_webhook():
-    logger.info("✅ ENDPOINT DE PRUEBA ENCONTRADO.")
-    return {"status": "TEST_OK"}
-
-# ------------------------------
+# --------------------------------------------------------
 # 🚨 ENDPOINT PRINCIPAL: WEBHOOK DE APPS SCRIPT
-# ------------------------------
+# --------------------------------------------------------
 @mcp.api_route("/webhook/invoice", methods=["POST"])
 async def handle_invoice_webhook(request: Request):
     """
@@ -76,6 +70,7 @@ async def handle_invoice_webhook(request: Request):
         return {"status": "success", "message": resultado_final.get("message")}
     else:
         logger.error(f"❌ Webhook fallido. Mensaje: {resultado_final.get('message')}")
+        # Retornar el error para que Apps Script sepa que falló
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=resultado_final.get("message"))
 
 
@@ -105,11 +100,14 @@ async def handle_invoice_webhook(request: Request):
 
 
 # -----------------------------
-# Run server MCP
+# Run server MCP (SOLUCIÓN PARA CLOUD RUN)
 # -----------------------------
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 7000))
+    # Cloud Run usará la variable PORT, si no existe usa 7000 (Local)
+    port = int(os.getenv("PORT", 7000)) 
     logger.info(f"🚀 MCP server started on port {port}")
+    
+    # Usamos la ejecución recomendada por FastMCP para entornos Serverless
     asyncio.run(
         mcp.run_async(
             transport="streamable-http",
