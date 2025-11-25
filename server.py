@@ -1,121 +1,112 @@
 import asyncio
 import logging
 import os
-import requests
+# import requests # <- Comentado
+# from datetime import datetime # <- Comentado
 from fastmcp import FastMCP
-from datetime import datetime
-# Importar tu tool de facturas
-from tool import validar_factura_tool, enviar_factura_a_sheets_tool
-from utilities.image_storage import upload_image_to_gcs
+from fastapi import Request, HTTPException, status
+import json
+
+# Importar solo la función de orquestación que usaremos
+from tool import preparar_y_enviar_factura_sap_tool 
+
+# # Importar tus tools antiguas (COMENTADAS)
+# from tool import validar_factura_tool, enviar_factura_a_sheets_tool
+# from utilities.image_storage import upload_image_to_gcs
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(format="[%(levelname)s]: %(message)s", level=logging.INFO)
+
+# --- CONFIGURACIÓN DE SEGURIDAD Y ENTORNO ---
+# Cargar secreto de entorno (de las variables que ya tienes en Cloud Run)
+AUTH_SECRET = os.getenv("APPS_SCRIPT_AUTH_SECRET", "default_secret_if_missing") 
 
 # Crear servidor MCP
 mcp = FastMCP("MCP Server on Cloud Run")
 
 # ------------------------------
-# Tool MCP: validar_factura
+# 🚨 ENDPOINT PRINCIPAL: WEBHOOK DE APPS SCRIPT
+# ------------------------------
+@mcp.api_route("/webhook/invoice", methods=["POST"])
+async def handle_invoice_webhook(request: Request):
+    """
+    Recibe el webhook de Apps Script, valida la autenticación y llama a la lógica principal.
+    """
+    logger.info("📡 Webhook /webhook/invoice recibido.")
+    
+    try:
+        data = await request.json()
+    except json.JSONDecodeError:
+        logger.error("❌ Invalid JSON received.")
+        raise HTTPException(status_code=400, detail="Invalid JSON format")
+
+    # 1. Autenticación del Webhook
+    received_secret = data.get("auth_secret")
+    if received_secret != AUTH_SECRET:
+        logger.warning(f"❌ AUTH FAILED: Secret mismatch. Received: {received_secret}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authorization secret")
+
+    gcs_path = data.get("gcs_path")
+    correo_remitente = data.get("remitente_correo")
+
+    if not gcs_path or not correo_remitente:
+        logger.error("❌ Missing gcs_path or remitente_correo in payload.")
+        raise HTTPException(status_code=400, detail="Missing GCS path or sender email")
+
+    # 2. Llamada a la lógica principal en tool.py
+    logger.info(f"➡️ Llamando a tool.py con Path: {gcs_path} y Correo: {correo_remitente}")
+    
+    # La lista de rutas es requerida por la tool.
+    rutas_bucket = [gcs_path] 
+    
+    # Ejecutamos la función principal
+    resultado_final = preparar_y_enviar_factura_sap_tool(rutas_bucket, correo_remitente)
+    
+    # 3. Respuesta al Webhook
+    if resultado_final.get("status") == "success":
+        logger.info(f"✅ Webhook procesado. Mensaje: {resultado_final.get('message')}")
+        return {"status": "success", "message": resultado_final.get("message")}
+    else:
+        logger.error(f"❌ Webhook fallido. Mensaje: {resultado_final.get('message')}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=resultado_final.get("message"))
+
+
+# ------------------------------
+# Tools Antiguas (COMENTADAS)
 # ------------------------------
 
-@mcp.tool()
-def validar_factura(rutas_bucket: list[str]) -> dict:
-    """
-    Valida facturas desde Google Cloud Storage.
-    
-    Parámetro:
-        rutas_bucket: lista de nombres de blobs en GCS.
-    
-    Devuelve:
-        dict con resultados y mensaje descriptivo.
-    """
-    logger.info(f">>> 🛠️ Tool: 'validar_factura' called with rutas_bucket={rutas_bucket}")
-    resultado = validar_factura_tool(rutas_bucket)
-    logger.info(f">>> 🛠️ Resultado: {resultado}")
-    return resultado
+# @mcp.tool()
+# def validar_factura(rutas_bucket: list[str]) -> dict:
+#     # ... Código de validación antiguo ...
+#     return {"status": "commented"}
 
-@mcp.tool()
-def enviar_factura_a_sheets(factura: dict, correo_remitente: str) -> dict:
-    """
-    Envía los datos de una factura a Google Sheets a través del Apps Script.
+# @mcp.tool()
+# def enviar_factura_a_sheets(factura: dict, correo_remitente: str) -> dict:
+#     # ... Código de sheets antiguo ...
+#     return {"status": "commented"}
 
-    Parámetros:
-        factura: dict con los datos validados de la factura.
-        correo_remitente: correo que realizó la consulta.
+# @mcp.tool()
+# def subir_pdf_easycontact(user_email: str, image_url: str) -> str:
+#     # ... Código de subida easycontact antiguo ...
+#     return {"status": "commented"}
 
-    Devuelve:
-        dict con el resultado de la operación.
-    """
-    logger.info(f">>> 🧾 Tool: 'enviar_factura_a_sheets' llamada con correo={correo_remitente}")
-    
-    # URL del Apps Script desplegado (reemplaza con la tuya)
-    SCRIPT_URL = os.getenv("APPS_SCRIPT_URL", "https://script.google.com/macros/s/AKfycbwNp08Jo3wZyl3MrZphOse7heWAwhJQvmjCMCU8qwPAO1pVczZfWPMWMpjw71AWXaZS/exec")
-
-    # Añadimos los campos adicionales
-    factura["correo_remitente"] = correo_remitente
-    factura["fecha_hora_consulta"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    # Enviamos la solicitud
-    try:
-        response = requests.post(SCRIPT_URL, json=factura, timeout=10)
-        if response.status_code == 200:
-            logger.info("✅ Datos enviados correctamente a Google Sheets.")
-            return {"success": True, "status": 200, "response": response.text}
-        else:
-            logger.error(f"❌ Error al enviar a Sheets: {response.text}")
-            return {"success": False, "status": response.status_code, "error": response.text}
-    except Exception as e:
-        logger.error(f"⚠️ Excepción al enviar factura: {e}")
-        return {"success": False, "error": str(e)}
-
-
-@mcp.tool()
-def subir_pdf_easycontact(user_email: str, image_url: str) -> str:
-    """
-    Sube la factura desde el link de easycontact a Google cloud storage.
-    
-    Parámetro:
-        user_email: email del usuario que envía el mensaje.
-        image_url: url del archivo adjunto en easycontact(puede ser pdf, imagen, doc, etc.) 
-    
-    Devuelve:
-        Confirmación de subida de archivo.
-    """
-    url = upload_image_to_gcs(user_email, image_url)
-    if url:
-        return f"Archivo subido correctamente a GCS: {url}"
-    else:
-        return "Error al subir el archivo."
-
-@mcp.tool()
-def enviar_factura(factura: dict, correo: str) -> dict:
-    """
-    envía la factura a sheets para ser registrada, solo cuando es válida.
-
-    Parámetros:
-        factura: dict con todos los datos de la factura.
-        correo: el correo del remitente.
-
-    Devuelve:
-        dict con status y mensaje de la operación.
-    """
-    logger.info(f">>> 🛠️ Tool: 'enviar_factura' called with factura={factura} correo={correo}")
-    resultado = enviar_factura_a_sheets_tool(factura, correo)
-    logger.info(f">>> 🛠️ Resultado: {resultado}")
-    return resultado
+# @mcp.tool()
+# def enviar_factura(factura: dict, correo: str) -> dict:
+#     # ... Código de envío antiguo ...
+#     return {"status": "commented"}
 
 
 # ------------------------------
 # Run server MCP
 # ------------------------------
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 7000))
-    logger.info(f"🚀 MCP server started on port {port}")
-    asyncio.run(
-        mcp.run_async(
-            transport="streamable-http",
-            host="0.0.0.0",
-            port=port
-        )
-    )
-
+    # Importamos Uvicorn aquí para el launch local
+    import uvicorn
+    port = int(os.getenv("PORT", 8080)) # Usar 8080 por convención de Cloud Run
+    logger.info(f"🚀 MCP server starting on port {port}")
+    
+    # Usamos la app de FastAPI que FastMCP genera internamente
+    app = mcp.get_app() 
+    
+    uvicorn.run(app, host="0.0.0.0", port=port)
+    # Nota: El uso de mcp.run_async() fue reemplazado por uvicorn.run() para una ejecución estándar.
