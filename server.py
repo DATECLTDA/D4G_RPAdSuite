@@ -100,13 +100,12 @@ async def handle_invoice_webhook(request: Request):
 # Run server MCP
 # ------------------------------
 if __name__ == "__main__":
-    # Importamos Uvicorn aquí para el launch local
-    import uvicorn
-    port = int(os.getenv("PORT", 8080)) # Usar 8080 por convención de Cloud Run
-    logger.info(f"🚀 MCP server starting on port {port}")
-    
-    # Usamos la app de FastAPI que FastMCP genera internamente
-    app = mcp.get_app() 
-    
-    uvicorn.run(app, host="0.0.0.0", port=port)
-    # Nota: El uso de mcp.run_async() fue reemplazado por uvicorn.run() para una ejecución estándar.
+    port = int(os.getenv("PORT", 7000))
+    logger.info(f"🚀 MCP server started on port {port}")
+    asyncio.run(
+        mcp.run_async(
+            transport="streamable-http",
+            host="0.0.0.0",
+            port=port
+        )
+    )
