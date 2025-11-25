@@ -96,9 +96,9 @@ async def handle_invoice_webhook(request: Request):
 #     return {"status": "commented"}
 
 
-# ------------------------------
+# -----------------------------
 # Run server MCP
-# ------------------------------
+# -----------------------------
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 7000))
     logger.info(f"🚀 MCP server started on port {port}")
