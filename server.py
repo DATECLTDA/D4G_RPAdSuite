@@ -4,7 +4,7 @@ import os
 # import requests # <- Comentado
 # from datetime import datetime # <- Comentado
 from fastmcp import FastMCP
-from fastapi import Request, HTTPException, status
+from fastapi import Request, HTTPException, status, APIRouter
 import json
 
 # Importar solo la función de orquestación que usaremos
@@ -23,6 +23,14 @@ AUTH_SECRET = os.getenv("APPS_SCRIPT_AUTH_SECRET", "default_secret_if_missing")
 
 # Crear servidor MCP
 mcp = FastMCP("MCP Server on Cloud Run")
+
+
+# Creamos un router temporal de FastAPI
+test_router = APIRouter()
+@test_router.post("/test/check")
+async def test_webhook():
+    logger.info("✅ ENDPOINT DE PRUEBA ENCONTRADO.")
+    return {"status": "TEST_OK"}
 
 # ------------------------------
 # 🚨 ENDPOINT PRINCIPAL: WEBHOOK DE APPS SCRIPT
