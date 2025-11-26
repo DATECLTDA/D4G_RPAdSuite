@@ -12,31 +12,75 @@ from typing import Optional
 from tool import validar_factura_tool, enviar_factura_a_sheets_tool
 from utilities.image_storage import upload_image_to_gcs
 
+# Configuración de logging
 logger = logging.getLogger(__name__)
-logging.basicConfig(format="[%(levelname)s]: %(message)s", level=logging.INFO)
+logging.basicConfig(
+    format="[%(levelname)s]: %(message)s", 
+    level=logging.INFO,
+    force=True  # Forzar configuración incluso si ya existe
+)
 
 # Crear servidor MCP
 mcp = FastMCP("MCP Server on Cloud Run")
 
 # Crear app FastAPI para endpoints HTTP
-app = FastAPI(title="MCP Server")
+app = FastAPI(
+    title="MCP Server", 
+    description="Servidor MCP para procesamiento de facturas",
+    version="1.0.0"
+)
 
 # Configuración de seguridad
 AUTH_SECRET = os.getenv("AUTH_SECRET", "MiClaveUltraSecreta_MCP_2025_#f6d9kP!")
 
 # Dependency para autenticación
-def verificar_autenticacion(authorization: Optional[str] = None):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Token requerido")
+def verificar_autenticacion(request: Request):
+    authorization = request.headers.get("Authorization")
     
-    token = authorization.replace("Bearer ", "")
+    if not authorization or not authorization.startswith("Bearer "):
+        logger.warning("❌ Intento de acceso sin token de autorización")
+        raise HTTPException(status_code=401, detail="Token de autorización requerido")
+    
+    token = authorization.replace("Bearer ", "").strip()
     if token != AUTH_SECRET:
+        logger.warning("❌ Token de autorización inválido")
         raise HTTPException(status_code=401, detail="Token inválido")
     
+    logger.info("✅ Autenticación exitosa")
     return True
 
 # ------------------------------
-# Endpoint principal para App Script
+# Health Check (sin autenticación)
+# ------------------------------
+
+@app.get("/")
+async def root():
+    """Endpoint raíz para verificar que el servidor está funcionando"""
+    return {
+        "status": "active",
+        "service": "MCP Server - Factura Processing",
+        "timestamp": datetime.now().isoformat(),
+        "endpoints_available": [
+            "GET /",
+            "GET /health", 
+            "POST /",
+            "POST /procesar-factura",
+            "GET /tools"
+        ]
+    }
+
+@app.get("/health")
+async def health_check():
+    """Endpoint para health checks (sin autenticación)"""
+    return {
+        "status": "healthy",
+        "service": "MCP Server",
+        "timestamp": datetime.now().isoformat(),
+        "version": "1.0.0"
+    }
+
+# ------------------------------
+# Endpoints principales (con autenticación)
 # ------------------------------
 
 @app.post("/")
@@ -46,13 +90,14 @@ async def root_endpoint(request: Request, auth: bool = Depends(verificar_autenti
     """
     try:
         data = await request.json()
-        action = data.get("action")
+        action = data.get("action", "unknown")
         parameters = data.get("parameters", {})
         
         logger.info(f"📥 Llamada recibida - Action: {action}")
-        logger.info(f"📧 Parámetros: {parameters.get('correo_remitente', 'N/A')}")
+        logger.info(f"📧 Correo: {parameters.get('correo_remitente', 'N/A')}")
         logger.info(f"📁 Archivo: {parameters.get('nombre_archivo', 'N/A')}")
         
+        # Procesar según la acción
         if action == "hola_mundo":
             return await hola_mundo_handler(parameters)
         elif action == "validar_factura":
@@ -61,65 +106,98 @@ async def root_endpoint(request: Request, auth: bool = Depends(verificar_autenti
             return await procesar_factura_handler(parameters)
         else:
             logger.warning(f"⚠️ Acción no reconocida: {action}")
-            return {"status": "error", "message": f"Acción no reconocida: {action}"}
+            return {
+                "status": "error", 
+                "message": f"Acción no reconocida: {action}",
+                "actions_available": ["hola_mundo", "validar_factura", "procesar_factura"]
+            }
             
     except Exception as e:
-        logger.error(f"❌ Error en endpoint principal: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"❌ Error en endpoint principal: {str(e)}")
+        logger.error(f"📋 Detalles del error: {repr(e)}")
+        return {
+            "status": "error", 
+            "message": f"Error interno del servidor: {str(e)}"
+        }
+
+@app.post("/procesar-factura")
+async def procesar_factura_endpoint(request: Request, auth: bool = Depends(verificar_autenticacion)):
+    """Endpoint alternativo para procesar facturas"""
+    try:
+        data = await request.json()
+        return await procesar_factura_handler(data)
+    except Exception as e:
+        logger.error(f"❌ Error en procesar-factura: {e}")
+        return {"status": "error", "message": str(e)}
+
+# ------------------------------
+# Handlers
+# ------------------------------
 
 async def hola_mundo_handler(parameters: dict):
     """Manejador para la acción hola_mundo - PRUEBA DE CONEXIÓN"""
-    ruta_gcs = parameters.get("ruta_gcs", "")
-    correo_remitente = parameters.get("correo_remitente", "")
-    asunto = parameters.get("asunto", "")
-    nombre_archivo = parameters.get("nombre_archivo", "")
-    
-    logger.info(f"🎉 ¡HOLA MUNDO! Factura recibida:")
-    logger.info(f"   📧 De: {correo_remitente}")
-    logger.info(f"   📝 Asunto: {asunto}")
-    logger.info(f"   📁 Archivo: {nombre_archivo}")
-    logger.info(f"   📍 Ruta GCS: {ruta_gcs}")
-    logger.info(f"   ⏰ Hora: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    
-    # Simular procesamiento futuro
-    logger.info("⏳ En un futuro aquí se procesará la factura con LLM...")
-    
-    return {
-        "status": "success",
-        "message": "¡Hola Mundo! Factura recibida correctamente en el servidor MCP",
-        "data": {
-            "correo": correo_remitente,
-            "archivo": nombre_archivo,
-            "ruta_gcs": ruta_gcs,
-            "asunto": asunto,
-            "timestamp": datetime.now().isoformat(),
-            "proximo_paso": "Procesamiento con LLM para extracción de datos"
+    try:
+        ruta_gcs = parameters.get("ruta_gcs", "")
+        correo_remitente = parameters.get("correo_remitente", "")
+        asunto = parameters.get("asunto", "")
+        nombre_archivo = parameters.get("nombre_archivo", "")
+        
+        # Log detallado
+        logger.info("🎉 ¡HOLA MUNDO! Factura recibida:")
+        logger.info(f"   📧 De: {correo_remitente}")
+        logger.info(f"   📝 Asunto: {asunto}")
+        logger.info(f"   📁 Archivo: {nombre_archivo}")
+        logger.info(f"   📍 Ruta GCS: {ruta_gcs}")
+        logger.info(f"   ⏰ Hora: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        # Simular procesamiento futuro
+        logger.info("⏳ En un futuro aquí se procesará la factura con LLM...")
+        
+        response_data = {
+            "status": "success",
+            "message": "¡Hola Mundo! Factura recibida correctamente en el servidor MCP",
+            "data": {
+                "correo": correo_remitente,
+                "archivo": nombre_archivo,
+                "ruta_gcs": ruta_gcs,
+                "asunto": asunto,
+                "timestamp": datetime.now().isoformat(),
+                "proximo_paso": "Procesamiento con LLM para extracción de datos",
+                "servidor": "MCP Server on Cloud Run"
+            }
         }
-    }
+        
+        logger.info(f"✅ Respuesta preparada: {response_data}")
+        return response_data
+        
+    except Exception as e:
+        logger.error(f"❌ Error en hola_mundo_handler: {e}")
+        return {"status": "error", "message": f"Error en handler: {str(e)}"}
 
 async def validar_factura_handler(parameters: dict):
     """Manejador para validar facturas"""
-    rutas_bucket = parameters.get("rutas_bucket", [])
-    if not rutas_bucket:
-        return {"status": "error", "message": "No se proporcionaron rutas de archivos"}
-    
     try:
+        rutas_bucket = parameters.get("rutas_bucket", [])
+        if not rutas_bucket:
+            return {"status": "error", "message": "No se proporcionaron rutas de archivos"}
+        
         logger.info(f"🔍 Validando factura: {rutas_bucket}")
         resultado = validar_factura_tool(rutas_bucket)
         return {"status": "success", "data": resultado}
+        
     except Exception as e:
         logger.error(f"❌ Error validando factura: {e}")
         return {"status": "error", "message": str(e)}
 
 async def procesar_factura_handler(parameters: dict):
     """Manejador para procesar facturas completas"""
-    ruta_gcs = parameters.get("ruta_gcs", "")
-    correo_remitente = parameters.get("correo_remitente", "")
-    
-    if not ruta_gcs:
-        return {"status": "error", "message": "No se proporcionó ruta GCS"}
-    
     try:
+        ruta_gcs = parameters.get("ruta_gcs", "")
+        correo_remitente = parameters.get("correo_remitente", "")
+        
+        if not ruta_gcs:
+            return {"status": "error", "message": "No se proporcionó ruta GCS"}
+        
         logger.info(f"🔍 Iniciando procesamiento completo de factura")
         logger.info(f"   📧 Correo: {correo_remitente}")
         logger.info(f"   📍 Ruta: {ruta_gcs}")
@@ -153,7 +231,7 @@ async def procesar_factura_handler(parameters: dict):
         return {"status": "error", "message": str(e)}
 
 # ------------------------------
-# Tools MCP existentes (mantener igual)
+# Tools MCP existentes
 # ------------------------------
 
 @mcp.tool()
@@ -203,21 +281,30 @@ def enviar_factura(factura: dict, correo: str) -> dict:
     return resultado
 
 # ------------------------------
-# Health Check
+# Configuración del servidor
 # ------------------------------
 
-@app.get("/health")
-async def health_check():
-    """Endpoint para verificar que el servidor está funcionando"""
-    return {
-        "status": "healthy",
-        "service": "MCP Server",
-        "timestamp": datetime.now().isoformat(),
-        "version": "1.0.0"
-    }
+async def run_mcp_server():
+    """Ejecuta el servidor MCP en segundo plano"""
+    try:
+        port = int(os.getenv("MCP_PORT", 7000))
+        logger.info(f"🚀 MCP server starting on port {port}")
+        await mcp.run_async(
+            transport="streamable-http",
+            host="0.0.0.0",
+            port=port
+        )
+    except Exception as e:
+        logger.error(f"❌ Error starting MCP server: {e}")
 
+@app.on_event("startup")
+async def startup_event():
+    """Inicia el servidor MCP en segundo plano al iniciar la app"""
+    logger.info("🔧 Starting up MCP Server...")
+    asyncio.create_task(run_mcp_server())
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 7000))
-    logger.info(f"🚀 Starting MCP Server on port {port}")
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    port = int(os.getenv("PORT", 8080))  # Cloud Run usa PORT 8080 por defecto
+    logger.info(f"🚀 Starting FastAPI Server on port {port}")
+    logger.info(f"🔑 Auth Secret configured: {'Yes' if AUTH_SECRET else 'No'}")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
