@@ -1,98 +1,106 @@
+# tool.py (Lógica de Tools)
+
 import json
 import os
-import requests
 import logging
-# from utilities.image_storage import download_pdf_to_tempfile # Comentado
-# from utilities.general import ( # Comentado
-#     get_transcript_document_cloud_vision,
-#     get_openai_answer,
-#     get_clean_json
-# )
-# from prompts import get_invoice_validator_prompt # Comentado
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-# URL de tu iFlow en BTP
+# URL de tu iFlow en BTP (usada por enviar_factura_sap)
 BTP_ENDPOINT = "https://c93fd89ctrial.it-cpitrial05-rt.cfapps.us10-001.hana.ondemand.com/http/factura_mcp"
 
-# ----------------------------------------------------------------------
-# FUNCIONES AUXILIARES (YA EXISTENTES)
-# ----------------------------------------------------------------------
+# Datos simulados de la Orden de Compra (OC)
+SIMULATED_PO = {
+    "PurchaseOrder": "4500000004",
+    "PurchaseOrderItem": "00020"
+}
 
 def preparar_factura_sap(rutas_bucket: list[str]) -> dict:
-    """ [CÓDIGO SIMULADO DE OCR, LLM Y PREPARACIÓN DE PAYLOAD] """
+    """ 
+    [SIMULACIÓN] 
+    1. Simula la extracción de datos de la factura (usando la ruta GCS).
+    2. Construye el payload SAP en el formato exacto requerido.
+    """
     try:
         if not rutas_bucket:
-            return {"status": "error", "mensaje": "Sin rutas de imagen"}
+            return {"status": "error", "message": "Sin rutas de imagen para validar."}
             
         ruta_gcs = rutas_bucket[0]
-        logger.info(f"📄 [SIMULACIÓN] Procesando: {ruta_gcs}")
+        logger.info(f"📄 [SIMULACIÓN OCR] Procesando: {ruta_gcs}")
         
-        # SIMULACIÓN DE EXTRACCIÓN LLM
-        datos = {
+        # 1. SIMULACIÓN DE EXTRACCIÓN (Datos de una factura genérica)
+        fecha_actual = datetime.now().strftime("%Y-%m-%d")
+        
+        datos_extraidos = {
             "factura_valida": True,
-            "monto_total": "1250.50",
-            "fecha_emision": "2025-11-25",
-            "purchase_order": "4500012345",
-            "purchase_order_item": "00010"
+            "monto_total": "2900.00",
+            "fecha_documento": fecha_actual,
+            "proveedor_nombre": "HIPERMAXI S.A.",
         }
         
-        # Construcción Payload SAP (Simulado)
-        monto = str(datos.get("monto_total", "0.00"))
-        
-        sap_payload = {
+        # 2. CONSTRUCCIÓN DEL PAYLOAD SAP (Formato exacto solicitado)
+        payload_sap = {
             "d": {
                 "CompanyCode": "1000",
-                "DocumentDate": f"{datos.get('fecha_emision')}T00:00:00",
-                "InvoiceGrossAmount": monto,
+                "DocumentDate": f"{datos_extraidos['fecha_documento']}T00:00:00",
+                "PostingDate": f"{datos_extraidos['fecha_documento']}T00:00:00",
+                "SupplierInvoiceIDByInvcgParty": datos_extraidos['proveedor_nombre'],
+                "InvoicingParty": "10000000", # Asumiendo un código de proveedor simulado
                 "DocumentCurrency": "BOB",
-                "InvoicingParty": "10000000",
-                # ... (resto de campos SAP)
+                "InvoiceGrossAmount": datos_extraidos['monto_total'],
+                "DueCalculationBaseDate": f"{datos_extraidos['fecha_documento']}T00:00:00",
+                "TaxIsCalculatedAutomatically": True,
+                "TaxDeterminationDate": f"{datos_extraidos['fecha_documento']}T00:00:00",
+                "SupplierInvoiceStatus": "A",
+                "to_SuplrInvcItemPurOrdRef": {
+                    "results": [
+                        {
+                            "SupplierInvoiceItem": "00001",
+                            "PurchaseOrder": SIMULATED_PO['PurchaseOrder'], 
+                            "PurchaseOrderItem": SIMULATED_PO['PurchaseOrderItem'],
+                            "DocumentCurrency": "BOB",
+                            "QuantityInPurchaseOrderUnit": "500.000",
+                            "PurchaseOrderQuantityUnit": "EA",
+                            "SupplierInvoiceItemAmount": datos_extraidos['monto_total'],
+                            "TaxCode": "V0"
+                        }
+                    ]
+                }
             }
         }
         
-        return {"status": "success", "sap_payload": sap_payload}
+        return {
+            "status": "success", 
+            "message": "Factura validada y payload SAP preparado.", 
+            "sap_payload": payload_sap,
+            "factura_valida": datos_extraidos['factura_valida']
+        }
 
     except Exception as e:
         logger.error(f"Excepción en preparar_factura_sap: {e}")
-        return {"status": "error", "mensaje": str(e)}
+        return {"status": "error", "message": f"Error al validar/preparar: {str(e)}"}
 
 
 def enviar_factura_sap(resultado_preparacion: dict, correo: str) -> dict:
-    """ [CÓDIGO SIMULADO DE ENVÍO A SAP] """
+    """ 
+    [SIMULACIÓN] 
+    Envía el payload SAP a la Integration Suite (BTP).
+    """
     sap_payload = resultado_preparacion.get("sap_payload")
-    if not sap_payload:
-        return {"status": "error", "message": "No hay payload SAP"}
+    if not sap_payload or not resultado_preparacion.get("factura_valida"):
+        return {"status": "error", "message": "Factura no válida o payload ausente."}
 
-    logger.info("⚡ [SIMULACIÓN] Iniciando intento de envío a SAP BTP.")
-    # Código de requests.get/post a BTP comentado para evitar fallos de credenciales/red
+    logger.info("⚡ [SIMULACIÓN ENVÍO] Intentando POST a SAP BTP...")
     
-    return {"status": "success", "message": "Simulación: Factura enviada correctamente a SAP BTP."}
-
-# ----------------------------------------------------------------------
-# FUNCIÓN DE ORQUESTACIÓN PRINCIPAL (Llamada desde server.py)
-# ----------------------------------------------------------------------
-
-def preparar_y_enviar_factura_sap_tool(rutas_bucket: list[str], correo_remitente: str) -> dict:
-    """
-    Función principal que ejecuta toda la cadena de valor: Preparación y Envío.
-    """
-    logger.info(f"*** INICIANDO PROCESO DE FACTURA desde {correo_remitente} ***")
+    # Aquí iría el código real de requests.post al BTP_ENDPOINT
+    # usando las credenciales BTP_USER_CLIENT/SECRET
     
-    # 1. Preparar Payload 
-    resultado_preparacion = preparar_factura_sap(rutas_bucket)
+    # Simulamos éxito:
+    simulated_doc_id = "5100000001"
     
-    if resultado_preparacion.get("status") == "error":
-        logger.error(f"Fallo en preparación de payload: {resultado_preparacion.get('mensaje')}")
-        return {"status": "error", "message": f"Fallo en preparación: {resultado_preparacion.get('mensaje')}"}
-        
-    # 2. Enviar a SAP BTP
-    resultado_envio = enviar_factura_sap(resultado_preparacion, correo_remitente)
-    
-    if resultado_envio.get("status") == "error":
-        logger.error(f"Fallo en envío a SAP: {resultado_envio.get('message')}")
-        return {"status": "error", "message": f"Fallo en envío a SAP: {resultado_envio.get('message')}"}
-        
-    # 3. Éxito
-    logger.info("*** PROCESO COMPLETO Y EXITOSO ***")
-    return {"status": "success", "message": resultado_envio.get("message")}
+    return {
+        "status": "success", 
+        "message": f"Factura enviada a SAP. ID de documento: {simulated_doc_id}",
+        "sap_document_id": simulated_doc_id
+    }
