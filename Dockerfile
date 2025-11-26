@@ -13,8 +13,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Cloud Run espera que escuches en el puerto 8080
 EXPOSE 8080
 
-# Configura variables de entorno para Cloud Run
+# Configura variables de entorno
 ENV PORT=8080
 ENV AUTH_SECRET=MiClaveUltraSecreta_MCP_2025_#f6d9kP!
+ENV BUCKET_NAME=rpa_facturacion
 
-CMD ["python", "server.py"]
+CMD ["python", "agent_server.py"]

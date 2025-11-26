@@ -72,3 +72,13 @@ llama-parse
 celery
 pyarrow
 pdf2image
+fastapi
+uvicorn
+requests
+google-cloud-storage
+google-cloud-vision
+openai
+pillow
+pdf2image
+llama-parse
+asyncio
