@@ -280,17 +280,31 @@ def enviar_factura(factura: dict, correo: str) -> dict:
     logger.info(f">>> 🛠️ Resultado: {resultado}")
     return resultado
 
+# ------------------------------
+# Configuración del servidor
+# ------------------------------
 
-# ------------------------------
-# Run server MCP
-# ------------------------------
-if __name__ == "__main__":
-    port = int(os.getenv("PORT", 7000))
-    logger.info(f"🚀 MCP server started on port {port}")
-    asyncio.run(
-        mcp.run_async(
+async def run_mcp_server():
+    """Ejecuta el servidor MCP en segundo plano"""
+    try:
+        port = int(os.getenv("MCP_PORT", 7000))
+        logger.info(f"🚀 MCP server starting on port {port}")
+        await mcp.run_async(
             transport="streamable-http",
             host="0.0.0.0",
             port=port
         )
-    )
+    except Exception as e:
+        logger.error(f"❌ Error starting MCP server: {e}")
+
+@app.on_event("startup")
+async def startup_event():
+    """Inicia el servidor MCP en segundo plano al iniciar la app"""
+    logger.info("🔧 Starting up MCP Server...")
+    asyncio.create_task(run_mcp_server())
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 8080))  # Cloud Run usa PORT 8080 por defecto
+    logger.info(f"🚀 Starting FastAPI Server on port {port}")
+    logger.info(f"🔑 Auth Secret configured: {'Yes' if AUTH_SECRET else 'No'}")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
