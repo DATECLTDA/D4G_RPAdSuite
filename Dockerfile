@@ -10,12 +10,11 @@ RUN apt-get update && apt-get install -y \
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Cloud Run espera que escuches en el puerto 8080
-EXPOSE 8080
+# Puerto 7000
+EXPOSE 7000
 
-# Configura variables de entorno
-ENV PORT=8080
+# Variables de entorno
+ENV PORT=7000
 ENV AUTH_SECRET=MiClaveUltraSecreta_MCP_2025_#f6d9kP!
-ENV BUCKET_NAME=rpa_facturacion
 
-CMD ["python", "agent_server.py"]
+CMD ["python", "server.py"]
