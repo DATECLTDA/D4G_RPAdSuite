@@ -46,17 +46,22 @@ def enviar_factura_a_sap(datos_factura: dict, correo_remitente: str) -> dict:
     return resultado_sap
 
 
+
 # ------------------------------
-# 4. TOOL: Tool de prueba
+# 4. TOOL: Tool de prueba para testing
 # ------------------------------
 @mcp.tool()
-def tool_prueba(nombre: str = "Usuario") -> str:
+def tool_prueba(nombre: str) -> str:
     """
-    Tool de prueba para verificar la conexión al servidor MCP.
-    Devuelve un mensaje simple.
+    Tool de prueba que devuelve un mensaje simple.
+    
+    Parámetro:
+        nombre: nombre de prueba
+    Retorna:
+        string con saludo
     """
-    logger.info(f"Tool 'tool_prueba' llamada por {nombre}")
-    return f"✅ Tool de prueba ejecutada correctamente. Hola {nombre}!"
+    return f"Hola {nombre}, esta es una respuesta de prueba desde MCP Server!"
+
 
 
 # ------------------------------
