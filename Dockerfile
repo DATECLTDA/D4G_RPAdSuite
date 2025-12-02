@@ -11,10 +11,10 @@ RUN apt-get update && apt-get install -y \
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Puerto 7000
-EXPOSE 7000
+EXPOSE 8080
 
 # Variables de entorno
-ENV PORT=7000
+ENV PORT=8080
 ENV AUTH_SECRET=MiClaveUltraSecreta_MCP_2025_#f6d9kP!
 
 CMD ["python", "server.py"]
